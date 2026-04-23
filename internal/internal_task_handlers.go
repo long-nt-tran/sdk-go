@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"go.temporal.io/sdk/internal/common/retry"
+	"go.temporal.io/sdk/internal/extstore"
 	"go.temporal.io/sdk/internal/protocol"
 
 	"go.temporal.io/sdk/converter"
@@ -2423,7 +2424,7 @@ func (ath *activityTaskHandlerImpl) Execute(taskQueue string, t *workflowservice
 		if outboundBase == nil {
 			outboundBase = context.Background()
 		}
-		outboundCtx := context.WithValue(outboundBase, storageTargetContextKey, storageTarget)
+		outboundCtx := extstore.WithStorageTarget(outboundBase, storageTarget)
 		if err := visitProtoPayloads(outboundCtx, ath.outboundPayloadVisitor, msg, ath.payloadVisitorConcurrency); err != nil {
 			return ath.visitorErrorToActivityFailure("Activity task postprocess error: ", t, err), nil
 		}

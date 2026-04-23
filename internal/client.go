@@ -18,6 +18,7 @@ import (
 
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internal/common/metrics"
+	"go.temporal.io/sdk/internal/extstore"
 	ilog "go.temporal.io/sdk/internal/log"
 	"go.temporal.io/sdk/log"
 )
@@ -1404,7 +1405,7 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 		heartbeatInterval = options.WorkerHeartbeatInterval
 	}
 
-	storageParams, err := ExternalStorageToParams(options.ExternalStorage)
+	storageParams, err := extstore.ExternalStorageToParams(options.ExternalStorage)
 	if err != nil {
 		panic(fmt.Sprintf("invalid ExternalStorage options: %v", err))
 	}
@@ -1449,7 +1450,7 @@ func NewServiceClient(workflowServiceClient workflowservice.WorkflowServiceClien
 	// Create outbound interceptor by wrapping backwards through chain
 	client.interceptor = &workflowClientInterceptor{
 		client:                 client,
-		inboundPayloadVisitor:  NewExternalRetrievalVisitor(storageParams),
+		inboundPayloadVisitor:  extstore.NewExternalRetrievalVisitor(storageParams),
 		outboundPayloadVisitor: client.newOutboundPayloadVisitor(),
 	}
 	for i := len(options.Interceptors) - 1; i >= 0; i-- {

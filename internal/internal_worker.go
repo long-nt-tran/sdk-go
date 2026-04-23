@@ -38,6 +38,7 @@ import (
 	"go.temporal.io/sdk/internal/common/metrics"
 	"go.temporal.io/sdk/internal/common/serializer"
 	"go.temporal.io/sdk/internal/common/util"
+	"go.temporal.io/sdk/internal/extstore"
 	ilog "go.temporal.io/sdk/internal/log"
 	"go.temporal.io/sdk/log"
 )
@@ -1715,7 +1716,7 @@ func NewWorkflowReplayer(options WorkflowReplayerOptions) (*WorkflowReplayer, er
 		}
 	}
 
-	storageParams, err := ExternalStorageToParams(options.ExternalStorage)
+	storageParams, err := extstore.ExternalStorageToParams(options.ExternalStorage)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ExternalStorage options: %w", err)
 	}
@@ -1729,7 +1730,7 @@ func NewWorkflowReplayer(options WorkflowReplayerOptions) (*WorkflowReplayer, er
 		contextPropagators:          options.ContextPropagators,
 		enableLoggingInReplay:       options.EnableLoggingInReplay,
 		disableDeadlockDetection:    options.DisableDeadlockDetection,
-		inboundPayloadVisitor:       NewExternalRetrievalVisitor(storageParams),
+		inboundPayloadVisitor:       extstore.NewExternalRetrievalVisitor(storageParams),
 		workflowExecutionResults:    make(map[string]*commonpb.Payloads),
 		workflowReplayerInstanceKey: workflowReplayerInstanceKey,
 		plugins:                     options.Plugins,
@@ -1993,7 +1994,7 @@ func (aw *WorkflowReplayer) replayWorkflowHistoryRoot(
 	// Resolve externally stored payloads in the history before passing to the
 	// task handler. This mirrors what processWorkflowTask does for live workers.
 	replayStorageCb := &replayStorageMetrics{logger: logger}
-	inboundPayloadVisitorCtx := context.WithValue(context.Background(), storageOperationCallbackContextKey, replayStorageCb)
+	inboundPayloadVisitorCtx := extstore.WithStorageOperationCallback(context.Background(), replayStorageCb)
 	if err := visitProtoPayloads(inboundPayloadVisitorCtx, aw.inboundPayloadVisitor, task, 0); err != nil {
 		return err
 	}
@@ -2282,9 +2283,9 @@ func NewAggregatedWorker(client *WorkflowClient, taskQueue string, options Worke
 		workerInstanceKey:            workerInstanceKey,
 		workerPollCompleteOnShutdown: workerPollCompleteOnShutdown,
 		serverSupportsAutoscaling:    &atomic.Bool{},
-		inboundPayloadVisitor:        NewExternalRetrievalVisitor(client.storageParams),
+		inboundPayloadVisitor:        extstore.NewExternalRetrievalVisitor(client.storageParams),
 		outboundPayloadVisitor: newCompositePayloadVisitor(
-			NewExternalStorageVisitor(client.storageParams),
+			extstore.NewExternalStorageVisitor(client.storageParams),
 			payloadLimitVisitor,
 		),
 		payloadVisitorConcurrency: options.MaxConcurrentWorkflowTaskExternalStorageVisits,

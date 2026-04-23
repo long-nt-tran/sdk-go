@@ -28,6 +28,7 @@ import (
 	"go.temporal.io/sdk/converter"
 	"go.temporal.io/sdk/internal/common/metrics"
 	"go.temporal.io/sdk/internal/common/serializer"
+	"go.temporal.io/sdk/internal/extstore"
 	"go.temporal.io/sdk/log"
 )
 
@@ -466,7 +467,7 @@ func (wtp *workflowTaskProcessor) processWorkflowTask(task *workflowTask) (retEr
 	defer close(doneCh)
 
 	downloadPayloadMetrics := &workflowTaskStorageMetrics{logger: wtp.logger}
-	ctx := context.WithValue(context.Background(), storageOperationCallbackContextKey, downloadPayloadMetrics)
+	ctx := extstore.WithStorageOperationCallback(context.Background(), downloadPayloadMetrics)
 
 	var taskErr error
 	if taskErr = visitProtoPayloads(ctx, wtp.inboundPayloadVisitor, task.task, wtp.payloadVisitorConcurrency); taskErr != nil {
@@ -596,8 +597,8 @@ func (wtp *workflowTaskProcessor) RespondTaskCompletedWithMetrics(
 	}
 
 	uploadPayloadMetrics := &workflowTaskStorageMetrics{}
-	ctx := context.WithValue(context.Background(), storageOperationCallbackContextKey, uploadPayloadMetrics)
-	ctx = context.WithValue(ctx, storageTargetContextKey, converter.StorageDriverWorkflowInfo{
+	ctx := extstore.WithStorageOperationCallback(context.Background(), uploadPayloadMetrics)
+	ctx = extstore.WithStorageTarget(ctx, extstore.StorageDriverWorkflowInfo{
 		Namespace:    wtp.namespace,
 		WorkflowID:   task.WorkflowExecution.GetWorkflowId(),
 		RunID:        task.WorkflowExecution.GetRunId(),
@@ -1800,13 +1801,13 @@ func (v *commandAwarePayloadVisitor) Visit(ctx *proxy.VisitPayloadsContext, payl
 func (v *commandAwarePayloadVisitor) ContextHook(ctx context.Context, msg proto.Message) (context.Context, error) {
 	switch attrs := msg.(type) {
 	case *commandpb.StartChildWorkflowExecutionCommandAttributes:
-		ctx = context.WithValue(ctx, storageTargetContextKey, converter.StorageDriverWorkflowInfo{
+		ctx = extstore.WithStorageTarget(ctx, converter.StorageDriverWorkflowInfo{
 			Namespace:    v.workflowInfo.Namespace,
 			WorkflowType: attrs.WorkflowType.GetName(),
 			WorkflowID:   attrs.WorkflowId,
 		})
 	case *commandpb.SignalExternalWorkflowExecutionCommandAttributes:
-		ctx = context.WithValue(ctx, storageTargetContextKey, converter.StorageDriverWorkflowInfo{
+		ctx = extstore.WithStorageTarget(ctx, converter.StorageDriverWorkflowInfo{
 			Namespace:  v.workflowInfo.Namespace,
 			WorkflowID: attrs.Execution.GetWorkflowId(),
 			RunID:      attrs.Execution.GetRunId(),
@@ -1819,7 +1820,7 @@ func (v *commandAwarePayloadVisitor) ContextHook(ctx context.Context, msg proto.
 		if wfType == "" {
 			wfType = v.workflowInfo.WorkflowType.Name
 		}
-		ctx = context.WithValue(ctx, storageTargetContextKey, converter.StorageDriverWorkflowInfo{
+		ctx = extstore.WithStorageTarget(ctx, converter.StorageDriverWorkflowInfo{
 			Namespace:    v.workflowInfo.Namespace,
 			WorkflowID:   v.workflowInfo.WorkflowExecution.ID,
 			WorkflowType: wfType,
@@ -1831,7 +1832,7 @@ func (v *commandAwarePayloadVisitor) ContextHook(ctx context.Context, msg proto.
 			if ns == "" {
 				ns = v.workflowInfo.Namespace
 			}
-			ctx = context.WithValue(ctx, storageTargetContextKey, converter.StorageDriverWorkflowInfo{
+			ctx = extstore.WithStorageTarget(ctx, converter.StorageDriverWorkflowInfo{
 				Namespace:  ns,
 				WorkflowID: v.workflowInfo.ParentWorkflowExecution.ID,
 				RunID:      v.workflowInfo.ParentWorkflowExecution.RunID,
