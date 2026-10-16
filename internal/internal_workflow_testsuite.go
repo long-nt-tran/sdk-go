@@ -4043,6 +4043,7 @@ func newTestNexusHandler(
 	}
 
 	reg := nexus.NewServiceRegistry()
+	reg.SetCancelFallback(&nexusTokenCancelHandler{})
 	for _, service := range nexusServices {
 		if err := reg.Register(service); err != nil {
 			return nil, fmt.Errorf("failed to register nexus service '%v': %w", service, err)
@@ -4078,6 +4079,10 @@ func (r *testNexusHandler) StartOperation(
 	opRef := r.env.nexusOperationRefs[service][operation]
 	op := s.Operation(operation)
 	if opRef == nil {
+		if op == nil && s.DynamicOperation() != nil {
+			r.notifyStarted(service, operation, r.opHandle.params.input)
+			return r.handler.StartOperation(ctx, service, operation, input, options)
+		}
 		if op == nil {
 			panic(fmt.Sprintf(
 				"nexus service %q operation %q not registered and not mocked",
@@ -4111,21 +4116,7 @@ func (r *testNexusHandler) StartOperation(
 		},
 	)
 
-	if r.env.onNexusOperationStartedListener != nil {
-		waitCh := make(chan struct{})
-		r.env.postCallback(func() {
-			r.env.onNexusOperationStartedListener(
-				service,
-				operation,
-				newEncodedValue(
-					&commonpb.Payloads{Payloads: []*commonpb.Payload{payload}},
-					r.env.GetDataConverter(),
-				),
-			)
-			close(waitCh)
-		}, false)
-		<-waitCh // wait until listener returns
-	}
+	r.notifyStarted(service, operation, payload)
 
 	m := &mockWrapper{
 		env:           r.env,
@@ -4188,6 +4179,24 @@ func (r *testNexusHandler) StartOperation(
 	}
 
 	return r.handler.StartOperation(ctx, service, operation, input, options)
+}
+
+func (r *testNexusHandler) notifyStarted(service, operation string, payload *commonpb.Payload) {
+	if r.env.onNexusOperationStartedListener != nil {
+		waitCh := make(chan struct{})
+		r.env.postCallback(func() {
+			r.env.onNexusOperationStartedListener(
+				service,
+				operation,
+				newEncodedValue(
+					&commonpb.Payloads{Payloads: []*commonpb.Payload{payload}},
+					r.env.GetDataConverter(),
+				),
+			)
+			close(waitCh)
+		}, false)
+		<-waitCh // wait until listener returns
+	}
 }
 
 func (r *testNexusHandler) CancelOperation(

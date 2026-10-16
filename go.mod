@@ -32,3 +32,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/nexus-rpc/sdk-go => github.com/long-nt-tran/nexus-rpc-sdk-go v0.0.0-20261016201505-ecaa5ab11baf

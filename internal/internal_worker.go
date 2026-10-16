@@ -1587,6 +1587,7 @@ func (aw *AggregatedWorker) start() error {
 	nexusServices := aw.registry.getRegisteredNexusServices()
 	if len(nexusServices) > 0 {
 		reg := nexus.NewServiceRegistry()
+		reg.SetCancelFallback(&nexusTokenCancelHandler{})
 		for _, service := range nexusServices {
 			if err := reg.Register(service); err != nil {
 				return fmt.Errorf("failed to create a nexus worker: %w", err)

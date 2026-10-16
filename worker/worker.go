@@ -151,6 +151,10 @@ type (
 		// RegisterNexusService registers a service with a worker. Panics if a service with the same name has
 		// already been registered on this worker or if the worker has already been started. A worker will only
 		// poll for Nexus tasks if any services are registered on it.
+		// Operations may be added, updated, or deleted on a registered service while the worker runs.
+		// Requests already dispatched keep their handler. If no named or dynamic handler remains,
+		// cancellation uses valid Temporal Workflow or Activity tokens in this worker's namespace.
+		// Workflow Update cancellation requires an application-specific handler.
 		RegisterNexusService(*nexus.Service)
 	}
 

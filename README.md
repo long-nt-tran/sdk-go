@@ -241,3 +241,40 @@ Note: Payloads encoded with `proto/binary` will not be readable in the Temporal 
 
 ## License
 MIT License, please see [LICENSE](LICENSE) for details.
+
+## Compose Nexus operations at runtime
+
+A `nexus.Service` stays live after `Worker.RegisterNexusService`. Use `Register`
+to add operations, `Update` to replace registered operations, and `Delete` to
+remove them while the Worker runs. Requests already dispatched keep their
+captured handler. Backing asynchronous executions continue independently.
+
+```go
+service := nexus.NewService("weather")
+service.MustRegister(listToolsOperation, getWeatherOperation)
+w.RegisterNexusService(service)
+// Start the Worker, then change the service as tools change.
+err := service.Update(cachedWeatherOperation) // Same operation name.
+// Check err.
+err = service.Delete("get_weather")
+```
+
+`service.RegisterDynamicOperation(handler)` registers a fallback implementing
+`nexus.OperationHandler[*nexus.LazyValue, any]`. A Temporal operation created with
+`temporalnexus.TemporalOperationOptions[*nexus.LazyValue, any]` can serve as this
+handler. Its start function calls `input.Consume(&args)` to decode with the
+configured data converter and reads the requested name through
+`nexus.ExtractHandlerInfo(ctx).Operation`. Named operations take precedence for
+both start and cancel. The Workflow test environment also supports dynamic
+operations called by name.
+
+When neither a named nor a dynamic handler remains, the Worker can cancel a
+Workflow or standalone Activity by a valid Temporal operation token in its
+namespace. This works after deletion and after restart, while the service is
+still registered. Unknown starts and invalid tokens return `NOT_FOUND`.
+Workflow Update cancellation needs an application-specific handler; the
+fallback returns `NOT_IMPLEMENTED`.
+
+This branch pins a Nexus RPC fork in its module replacements. A downstream main
+module must also include the `github.com/nexus-rpc/sdk-go` replacement from
+`go.mod`; Go does not inherit replacements from dependencies.

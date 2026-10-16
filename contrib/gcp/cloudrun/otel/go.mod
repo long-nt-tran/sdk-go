@@ -54,3 +54,5 @@ replace (
 	go.temporal.io/sdk/contrib/opentelemetry => ../../../opentelemetry
 	go.temporal.io/sdk/contrib/opentelemetry/otlpworker => ../../../opentelemetry/otlpworker
 )
+
+replace github.com/nexus-rpc/sdk-go => github.com/long-nt-tran/nexus-rpc-sdk-go v0.0.0-20261016201505-ecaa5ab11baf

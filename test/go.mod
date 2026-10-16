@@ -75,3 +75,5 @@ replace (
 	go.temporal.io/sdk/contrib/sysinfo => ../contrib/sysinfo
 	go.temporal.io/sdk/contrib/tally => ../contrib/tally
 )
+
+replace github.com/nexus-rpc/sdk-go => github.com/long-nt-tran/nexus-rpc-sdk-go v0.0.0-20261016201505-ecaa5ab11baf

@@ -22,6 +22,8 @@ to docs, or any other relevant information.
 
 ### Added
 
+- Support live Nexus service operation updates and dynamic handlers. Cancel Temporal-backed Workflows and standalone Activities by token when the operation handler has been removed; Workflow Updates still require an application-specific cancellation handler.
+
 ### Changed
 
 ### Deprecated
