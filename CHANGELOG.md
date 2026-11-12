@@ -22,6 +22,8 @@ to docs, or any other relevant information.
 
 ### Added
 
+- Add `NewDynamicTemporalOperation` and `MustNewDynamicTemporalOperation` for a service-level Nexus catch-all with raw input, `any` results, and existing Temporal cancellation behavior.
+
 ### Changed
 
 ### Deprecated

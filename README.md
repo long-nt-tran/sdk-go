@@ -288,3 +288,48 @@ converter and configure matching propagator/tracing opt-ins when replaying encod
 
 ## License
 MIT License, please see [LICENSE](LICENSE) for details.
+
+## Dynamic Nexus operation handlers
+
+Register named operations as usual, then add one unnamed fallback per service:
+
+```go
+service := nexus.NewService("weather")
+service.MustRegister(listToolsOperation)
+err := service.RegisterDynamicOperation(
+    temporalnexus.MustNewDynamicTemporalOperation(
+        temporalnexus.DynamicTemporalOperationOptions{Start: forwardTool},
+    ),
+)
+// Check err, then register service with the Worker.
+```
+
+`forwardTool` has the existing Temporal start signature with raw
+`*nexus.LazyValue` input. Decode with `input.Consume(&args)` and read the original
+name from `nexus.ExtractHandlerInfo(ctx).Operation`. Return a synchronous result
+or start a Temporal-backed asynchronous operation. Named handlers take precedence
+for start and cancel. Unknown services still return `NOT_FOUND`.
+
+To reject a name, return a `NOT_FOUND` handler error. That error is final; no
+other handler runs.
+
+Cancellation reuses the Temporal operation token. Workflow runs and standalone
+Activities use their existing default cancellation handlers; Workflow Updates need
+application-specific handling. Cancellation reads only the token, so it works after
+the application stops accepting that name.
+
+Nexus inbound interceptors run for the catch-all. `NexusStartOperationInput.Input`
+is the unconsumed `*nexus.LazyValue`.
+
+The Workflow test environment routes unmatched names to the catch-all. To mock a
+name that the catch-all serves, pass `nexus.NewOperationReference[I, O](name)` to
+`OnNexusOperation`.
+
+This fork pins Nexus RPC to a Git commit. A downstream main module must include:
+
+```go
+replace github.com/nexus-rpc/sdk-go => github.com/long-nt-tran/nexus-rpc-sdk-go v0.0.0-20261113224932-a8683e399a52
+```
+
+Go does not inherit replacements from dependencies. Replace this pin with an
+upstream release containing dynamic operation support before merging upstream.
